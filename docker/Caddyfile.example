@@ -1,0 +1,12 @@
+# Caddyfile for Coral Dash self-hosted
+# Caddy provides automatic HTTPS via Let's Encrypt
+#
+# Usage:
+#   1. Install Caddy: https://caddyserver.com/docs/install
+#   2. Copy this file to /etc/caddy/Caddyfile (or wherever your Caddy config lives)
+#   3. Replace coraldash.example.com with your domain
+#   4. Run: sudo systemctl reload caddy
+
+coraldash.example.com {
+    reverse_proxy localhost:3000
+}
