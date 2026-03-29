@@ -8,5 +8,18 @@
 #   4. Run: sudo systemctl reload caddy
 
 coraldash.example.com {
-    reverse_proxy localhost:3000
+    # Supabase Auth API (GoTrue via Kong gateway)
+    handle /auth/v1/* {
+        reverse_proxy localhost:8000
+    }
+
+    # Supabase REST API (PostgREST via Kong gateway)
+    handle /rest/v1/* {
+        reverse_proxy localhost:8000
+    }
+
+    # Next.js application
+    handle {
+        reverse_proxy localhost:3000
+    }
 }

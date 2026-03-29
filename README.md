@@ -76,12 +76,20 @@ On first boot, the container activates your licence key (single HTTPS call to `c
 
 ### 5. Set up a reverse proxy
 
-You need HTTPS for Google OAuth. We recommend **Caddy** for automatic certificate management:
+You need HTTPS for Google OAuth. The reverse proxy must route **both** the app and the Supabase API through the same domain:
 
 ```
 # /etc/caddy/Caddyfile
 coraldash.yourdomain.com {
-    reverse_proxy localhost:3000
+    handle /auth/v1/* {
+        reverse_proxy localhost:8000
+    }
+    handle /rest/v1/* {
+        reverse_proxy localhost:8000
+    }
+    handle {
+        reverse_proxy localhost:3000
+    }
 }
 ```
 
@@ -97,7 +105,7 @@ Visit `https://coraldash.yourdomain.com` and sign in with Google.
 
 1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
 2. Create a new **OAuth 2.0 Client ID** (Web application)
-3. Add authorized redirect URI: `https://coraldash.yourdomain.com/auth/callback`
+3. Add authorized redirect URI: `https://coraldash.yourdomain.com/auth/v1/callback`
 4. Enable the **Google Drive API** (for Sheets sync)
 5. Copy the Client ID and Client Secret to your `.env`
 
@@ -169,7 +177,7 @@ Access at `http://your-server:3100`. Not recommended for production.
 
 Ensure your redirect URI in Google Cloud Console exactly matches:
 ```
-https://your-domain/auth/callback
+https://your-domain/auth/v1/callback
 ```
 
 ### Database connection issues
@@ -206,27 +214,25 @@ docker compose up -d
                     ┌─────────────┐
                     │   Caddy /   │
                     │   Nginx     │  :443 (HTTPS)
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │  Coral Dash │  :3000 (Next.js)
-                    │  + Cron     │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │    Kong     │  :8000 (API Gateway)
-                    └───┬─────┬──┘
-                        │     │
-              ┌─────────▼┐  ┌─▼─────────┐
-              │  GoTrue  │  │ PostgREST  │
-              │  (Auth)  │  │  (REST)    │
-              └─────┬────┘  └─────┬──────┘
-                    │             │
-                    └──────┬──────┘
-                    ┌──────▼──────┐
-                    │ PostgreSQL  │  :5432
-                    │  (Supabase) │
-                    └─────────────┘
+                    └──┬──────┬──┘
+                       │      │
+          /auth/v1/*   │      │  /*
+          /rest/v1/*   │      │
+                       │      │
+                 ┌─────▼──┐ ┌─▼──────────┐
+                 │  Kong  │ │ Coral Dash  │
+                 │  :8000 │ │ :3000       │
+                 └──┬──┬──┘ │ + Cron      │
+                    │  │    └──────┬──────┘
+          ┌────────▼┐ ├▼────────┐  │
+          │ GoTrue  │ │PostgREST│  │
+          │  :9999  │ │  :3000  │  │
+          └────┬────┘ └────┬────┘  │
+               └─────┬─────┘       │
+               ┌─────▼─────┐       │
+               │ PostgreSQL │◄──────┘
+               │   :5432    │
+               └────────────┘
 ```
 
 ---
