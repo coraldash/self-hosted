@@ -239,7 +239,8 @@ docker compose up -d
 
 ## Support
 
-- **Issues:** [github.com/coraldash/self-hosted/issues](https://github.com/coraldash/self-hosted/issues)
+- **Roadmap & Changelog:** [coraldash.com/roadmap](https://coraldash.com/roadmap) — see all fixes and upcoming features
+- **Found a bug?** [Open an issue on GitHub](https://github.com/coraldash/self-hosted/issues)
 - **Purchase:** [coraldash.com/self-hosting](https://coraldash.com/self-hosting)
 - **Account:** [coraldash.com/settings](https://coraldash.com/settings)
 
