@@ -26,7 +26,7 @@ Coral Dash makes **exactly one outbound call** — on first boot, to activate yo
 
 - **Docker** and **Docker Compose** v2+
 - A **domain name** with DNS pointed to your server
-- A **Google Cloud project** with OAuth credentials (for Google login + Sheets sync)
+- A **Google Cloud project** with OAuth credentials — required for Google Sheets sync; also enables "Continue with Google" login (email/password login needs no extra setup)
 - A **licence key** — [purchase here](https://coraldash.com/self-hosting), then copy from your [account settings](https://coraldash.com/settings)
 
 ## Quick Start
@@ -97,7 +97,9 @@ Example configs for [Caddy](docker/Caddyfile.example) and [Nginx](docker/nginx.c
 
 ### 6. Sign in
 
-Visit `https://coraldash.yourdomain.com` and sign in with Google.
+Visit `https://coraldash.yourdomain.com` and either **Continue with Google** or
+create an account with **email and password** — both work out of the box. See
+[Email/Password Login](#emailpassword-login) for details and optional lockdown.
 
 ---
 
@@ -108,6 +110,56 @@ Visit `https://coraldash.yourdomain.com` and sign in with Google.
 3. Add authorized redirect URI: `https://coraldash.yourdomain.com/auth/v1/callback`
 4. Enable the **Google Drive API** (for Sheets sync)
 5. Copy the Client ID and Client Secret to your `.env`
+
+---
+
+## Email/Password Login
+
+Accounts can sign in with **Google** or with an **email address and password** —
+both appear on the login page. Email/password is the easiest option if you'd
+rather not wire up Google OAuth just for sign-in (you still need Google for Sheets
+sync).
+
+### Works out of the box
+
+Email/password signup needs **no mail server**. New accounts are auto-confirmed
+and signed in immediately — ideal for a private instance.
+
+### Optional: email confirmation & password reset
+
+To require new users to confirm their email, and to enable "forgot password"
+reset links, configure SMTP (any provider works):
+
+1. Set the `SMTP_*` variables in `.env`:
+
+   ```env
+   SMTP_HOST=smtp.resend.com
+   SMTP_PORT=465
+   SMTP_USER=resend
+   SMTP_PASS=your-smtp-password-or-api-key
+   SMTP_SENDER_EMAIL=auth@yourdomain.com
+   ```
+
+2. In `docker-compose.yml`, uncomment the `GOTRUE_SMTP_*` lines under the `auth`
+   service and set `GOTRUE_MAILER_AUTOCONFIRM: "false"`.
+3. Restart: `docker compose up -d`
+
+Without SMTP the "forgot password" link will report that the email couldn't be
+sent — that's expected, and both login methods still work.
+
+### Lock down to your account only
+
+By default, anyone who can reach your URL can create an account (this was already
+true for Google sign-in). For a single-user instance, create your account first,
+then disable new signups by adding this to the `auth` service in
+`docker-compose.yml` and restarting:
+
+```yaml
+GOTRUE_DISABLE_SIGNUP: "true"
+```
+
+Existing users can still log in; no new accounts (Google **or** email) can be
+created.
 
 ---
 
