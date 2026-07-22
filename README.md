@@ -49,7 +49,7 @@ Edit `.env` and fill in:
 ```env
 LICENSE_KEY=your-uuid-licence-key
 SITE_URL=https://coraldash.yourdomain.com
-POSTGRES_PASSWORD=<generate a strong password>
+POSTGRES_PASSWORD=<generate with: openssl rand -hex 24>
 JWT_SECRET=<generate with: openssl rand -base64 32>
 GOOGLE_OAUTH_CLIENT_ID=your-google-client-id
 GOOGLE_OAUTH_CLIENT_SECRET=your-google-client-secret
@@ -57,14 +57,21 @@ ALLOWED_EMAIL=you@gmail.com
 CRON_SECRET=<generate with: openssl rand -hex 16>
 ```
 
+> **Note:** `POSTGRES_PASSWORD` must contain only letters and digits — it is embedded
+> in `postgres://` connection URLs, so characters like `/ + @ : # ?` break the stack
+> (base64 output usually contains `/` or `+`). `openssl rand -hex 24` is safe. Also
+> note `.env` files are read literally: run the `openssl` commands in your terminal
+> and paste the output — `$(...)` is not executed inside `.env`.
+
 ### 3. Generate Supabase keys
 
 ```bash
 chmod +x docker/generate-keys.sh
-./docker/generate-keys.sh "$JWT_SECRET"
+./docker/generate-keys.sh
 ```
 
-Copy the output `ANON_KEY` and `SERVICE_ROLE_KEY` into your `.env`.
+The script reads `JWT_SECRET` from your `.env` (you can also pass the secret as an
+argument). Copy the output `ANON_KEY` and `SERVICE_ROLE_KEY` into your `.env`.
 
 ### 4. Start the stack
 
@@ -166,9 +173,15 @@ created.
 ## Updating
 
 ```bash
-docker compose pull coraldash
+git pull                        # picks up compose/config fixes
+docker compose pull coraldash   # picks up the latest app image
 docker compose up -d
 ```
+
+If `git pull` changed `docker-compose.yml`, `docker compose up -d` recreates the
+affected containers (a brief restart; your data volume is untouched). If you have
+edited `docker-compose.yml` locally (SMTP, signup lockdown), stash your changes
+first: `git stash && git pull && git stash pop`.
 
 Migrations run automatically on startup. Back up your database before updating:
 
@@ -225,6 +238,44 @@ Access at `http://your-server:3100`. Not recommended for production.
 - Your server needs outbound HTTPS to `coraldash.com` on first boot only
 - If already activated on another instance, [deactivate it first](https://coraldash.com/settings)
 
+### "dependency failed to start: container coraldash-rest-1 is unhealthy"
+
+A bug in copies of `docker-compose.yml` downloaded before 22 July 2026: the health
+probe for the `rest` (PostgREST) container needed a shell that does not exist
+inside that image on amd64 servers, so Docker could never mark it healthy and
+startup aborted. An `auth` error tile alongside it is usually just fallout from
+the aborted startup.
+
+```bash
+git pull
+docker compose up -d
+```
+
+To patch by hand instead: in `docker-compose.yml`, delete the `healthcheck:` block
+under `rest:`, and under the `kong:` service's `depends_on:` change the `rest:`
+condition from `service_healthy` to `service_started`.
+
+If you already patched the file by hand, `git pull` will refuse over the local
+change — run `git checkout -- docker-compose.yml` first (the pulled fix replaces
+your patch).
+
+After the fix, `docker compose ps` shows `db`, `auth` and `kong` as `healthy` and
+`rest` as plain `Up` — that is by design (the image has no shell to run a probe).
+
+### "password authentication failed" / auth restart-looping
+
+The database volume keeps the password it was first created with. If you changed
+`POSTGRES_PASSWORD` after an earlier `docker compose up` attempt, the new value no
+longer matches. If setup never completed there is no data to lose:
+
+```bash
+docker compose down -v   # deletes the database volume
+docker compose up -d
+```
+
+Also make sure the password contains only letters and digits — characters like
+`/ + @ :` break the connection URLs (see the note in Quick Start step 2).
+
 ### Google OAuth redirect error
 
 Ensure your redirect URI in Google Cloud Console exactly matches:
@@ -239,7 +290,9 @@ docker compose ps
 docker compose logs db
 ```
 
-Check that `POSTGRES_PASSWORD` is consistent across your `.env`.
+Check that `POSTGRES_PASSWORD` is consistent across your `.env`. If the `auth` or
+`rest` logs show `password authentication failed`, see the entry above — the
+database volume remembers the password it was created with.
 
 ### Sync not running
 
@@ -248,6 +301,20 @@ docker compose logs coraldash | grep Cron
 ```
 
 Default schedule is `0 6 * * *` (6am UTC). Customise with `SYNC_SCHEDULE` in `.env`.
+
+### Unraid
+
+Coral Dash runs fine on Unraid with the **Compose Manager** plugin — nothing in
+the stack is Unraid-specific:
+
+- Keep `docker-compose.yml`, `.env`, and the `docker/` folder together in the
+  stack directory.
+- First boot on HDD arrays can take 2-3 minutes while the database initialises;
+  the health checks allow for this.
+- If a container shows an **Error** tile, the reason is in its logs:
+  `docker compose logs <service>` (e.g. `rest`, `auth`).
+- Seeing `studio` and `meta` containers means the optional `debug` profile is
+  enabled — they are harmless and not required.
 
 ### Reset everything
 
