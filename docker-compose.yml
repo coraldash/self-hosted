@@ -11,10 +11,12 @@ services:
       - db-data:/var/lib/postgresql/data
       - ./docker/init-roles.sql:/docker-entrypoint-initdb.d/zz-init-roles.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
       interval: 5s
       timeout: 5s
       retries: 10
+      # First boot runs the full Supabase init script set; slow disks need the grace.
+      start_period: 180s
 
   auth:
     image: supabase/gotrue:v2.170.0
@@ -62,6 +64,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      # GoTrue runs its own migrations on first boot against a cold database.
+      start_period: 60s
 
   rest:
     image: postgrest/postgrest:v12.2.3
@@ -75,11 +79,10 @@ services:
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
       PGRST_DB_USE_LEGACY_GUCS: "false"
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c 'head -c 0 < /dev/tcp/localhost/3000' || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    # No healthcheck: the amd64 PostgREST image is distroless (no shell or probe
+    # binary), so an in-container probe cannot run. Matches upstream Supabase.
+    # PostgREST retries its DB connection internally; Kong serves 503 on
+    # /rest/v1/* until it is ready.
 
   kong:
     image: kong:3.8
@@ -90,7 +93,9 @@ services:
       auth:
         condition: service_healthy
       rest:
-        condition: service_healthy
+        # service_started, not service_healthy: the rest image cannot host a
+        # healthcheck (see above), so there is no health state to wait on.
+        condition: service_started
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
@@ -105,6 +110,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   studio:
     image: supabase/studio:20241202-4c75d03
@@ -172,6 +178,7 @@ services:
       CRON_SECRET: ${CRON_SECRET}
       SYNC_SCHEDULE: ${SYNC_SCHEDULE:-0 6 * * *}
       TRADING212_ENCRYPTION_KEY: ${TRADING212_ENCRYPTION_KEY:-}
+      METALPRICE_API_KEY: ${METALPRICE_API_KEY:-}
 
 volumes:
   db-data:

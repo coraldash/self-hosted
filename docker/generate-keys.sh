@@ -1,17 +1,32 @@
 #!/bin/bash
 
 # Generate Supabase ANON_KEY and SERVICE_ROLE_KEY from JWT_SECRET
-# Usage: ./generate-keys.sh <JWT_SECRET>
+# Usage: ./docker/generate-keys.sh [JWT_SECRET]
+# With no argument, reads JWT_SECRET from ./.env in the current directory.
 
 set -e
 
 JWT_SECRET="${1:-}"
 
+if [ -z "$JWT_SECRET" ] && [ -f ".env" ]; then
+  JWT_SECRET="$(grep -m1 '^JWT_SECRET=' .env | cut -d= -f2- | tr -d '\r' | sed -e "s/^[\"']//" -e "s/[\"']$//")"
+  if [ -n "$JWT_SECRET" ]; then
+    echo "Using JWT_SECRET from ./.env" >&2
+  fi
+fi
+
 if [ -z "$JWT_SECRET" ]; then
-  echo "Usage: ./generate-keys.sh <JWT_SECRET>"
+  echo "Usage: ./docker/generate-keys.sh [JWT_SECRET]"
   echo ""
+  echo "With no argument, reads JWT_SECRET from ./.env in the current directory."
   echo "Generate a JWT_SECRET first:"
   echo "  openssl rand -base64 32"
+  exit 1
+fi
+
+if [ "$JWT_SECRET" = "your-super-secret-jwt-token-at-least-32-chars" ]; then
+  echo "Error: JWT_SECRET is still the placeholder from .env.example." >&2
+  echo "Generate a real one first:  openssl rand -base64 32" >&2
   exit 1
 fi
 
