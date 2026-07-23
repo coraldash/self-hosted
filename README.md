@@ -25,7 +25,8 @@ Coral Dash makes **exactly one outbound call** — on first boot, to activate yo
 ## Prerequisites
 
 - **Docker** and **Docker Compose** v2+
-- A **domain name** with DNS pointed to your server
+- A **domain name** with DNS pointed to your server — needed for Google sign-in,
+  HTTPS, and production use; a LAN trial works without one (see step 5)
 - A **Google Cloud project** with OAuth credentials — required for Google Sheets sync; also enables "Continue with Google" login (email/password login needs no extra setup)
 - A **licence key** — [purchase here](https://coraldash.com/self-hosting), then copy from your [account settings](https://coraldash.com/settings)
 
@@ -81,7 +82,13 @@ docker compose up -d
 
 On first boot, the container activates your licence key (single HTTPS call to `coraldash.com`). After that, it runs fully offline.
 
-### 5. Set up a reverse proxy
+> **Just trying it out?** From v3.1.1 you can skip step 5 entirely: set
+> `SITE_URL=http://your-server-ip:3000` in `.env`, open that address, and create
+> an account with email and password. The app routes the Supabase API internally.
+> A domain, HTTPS, and the reverse proxy are only needed for Google sign-in and
+> production use.
+
+### 5. Set up a reverse proxy (for Google sign-in and production)
 
 You need HTTPS for Google OAuth. The reverse proxy must route **both** the app and the Supabase API through the same domain:
 
@@ -261,6 +268,21 @@ your patch).
 
 After the fix, `docker compose ps` shows `db`, `auth` and `kong` as `healthy` and
 `rest` as plain `Up` — that is by design (the image has no shell to run a probe).
+
+### "Method Not Allowed" when signing in or creating an account
+
+Seen on versions before v3.1.1 when the browser's auth requests reached the app
+instead of the API gateway. Update the image:
+
+```bash
+docker compose pull coraldash
+docker compose up -d
+```
+
+From v3.1.1 the app routes `/auth/v1/*` and `/rest/v1/*` itself, so email/password
+sign-in needs no reverse proxy. Also make sure `SITE_URL` in `.env` exactly
+matches the address in your browser's address bar (rerun `docker compose up -d`
+after changing it).
 
 ### "password authentication failed" / auth restart-looping
 
