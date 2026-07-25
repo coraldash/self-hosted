@@ -121,9 +121,25 @@ create an account with **email and password** — both work out of the box. See
 
 1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
 2. Create a new **OAuth 2.0 Client ID** (Web application)
-3. Add authorized redirect URI: `https://coraldash.yourdomain.com/auth/v1/callback`
-4. Enable the **Google Drive API** (for Sheets sync)
+3. Add **both** authorized redirect URIs:
+   - `https://coraldash.yourdomain.com/auth/v1/callback` (Google sign-in)
+   - `https://coraldash.yourdomain.com/api/auth/google-sheets/callback` (Sheets connection)
+4. Enable the **Google Drive API** and the **Google Picker API** (for Sheets sync)
 5. Copy the Client ID and Client Secret to your `.env`
+6. Create an **API key** on the same Credentials page (restrict it to the Google
+   Picker API) and put it in `.env` as `GOOGLE_PICKER_API_KEY`; set `GOOGLE_APP_ID`
+   to your Google Cloud project **number** (shown on the Cloud Console home page)
+
+### Consent screen (Data access)
+
+- The only scope Coral Dash needs is `.../auth/drive.file`. It requires **no
+  Google verification**, and you don't specify any file in the console: the
+  scope grants access solely to the spreadsheet you pick inside Coral Dash
+  during onboarding.
+- **Publish the consent screen to Production** (Audience page). With only the
+  non-sensitive `drive.file` scope this needs no review. Leaving it in Testing
+  mode makes Google expire the connection every 7 days, which silently breaks
+  the daily sync.
 
 ---
 
