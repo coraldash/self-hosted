@@ -124,7 +124,10 @@ create an account with **email and password** — both work out of the box. See
 3. Add **both** authorized redirect URIs:
    - `https://coraldash.yourdomain.com/auth/v1/callback` (Google sign-in)
    - `https://coraldash.yourdomain.com/api/auth/google-sheets/callback` (Sheets connection)
-4. Enable the **Google Drive API** and the **Google Picker API** (for Sheets sync)
+4. Enable **three** APIs (APIs & Services → Library): the **Google Sheets API**
+   (reads your transactions during sync), the **Google Drive API**, and the
+   **Google Picker API** (both used when picking your spreadsheet). If the
+   Sheets API is missing, connecting works but listing tabs and syncing fail
 5. Copy the Client ID and Client Secret to your `.env`
 6. Create an **API key** on the same Credentials page (restrict it to the Google
    Picker API) and put it in `.env` as `GOOGLE_PICKER_API_KEY`; set `GOOGLE_APP_ID`
@@ -339,6 +342,19 @@ docker compose logs coraldash | grep Cron
 ```
 
 Default schedule is `0 6 * * *` (6am UTC). Customise with `SYNC_SCHEDULE` in `.env`.
+
+### "Sync failed" after connecting Google Sheets
+
+From v3.1.8 the sync screen shows the exact underlying error — update the image
+(`docker compose pull coraldash && docker compose up -d`) if you only see a
+generic message. The most common cause is the **Google Sheets API** not being
+enabled in your Google Cloud project (it is a separate switch from the Drive
+and Picker APIs): enable it under APIs & Services → Library, wait a minute,
+and sync again. The full error is also in the app logs:
+
+```bash
+docker compose logs coraldash | grep -i "sync failed"
+```
 
 ### Unraid
 
