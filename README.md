@@ -345,15 +345,16 @@ Default schedule is `0 6 * * *` (6am UTC). Customise with `SYNC_SCHEDULE` in `.e
 
 ### "Sync failed" after connecting Google Sheets
 
-From v3.1.8 the sync screen shows the exact underlying error — update the image
+From v3.1.9 the sync screen shows the exact underlying error — update the image
 (`docker compose pull coraldash && docker compose up -d`) if you only see a
 generic message. The most common cause is the **Google Sheets API** not being
 enabled in your Google Cloud project (it is a separate switch from the Drive
 and Picker APIs): enable it under APIs & Services → Library, wait a minute,
-and sync again. The full error is also in the app logs:
+and sync again. The full error is also in the app logs (keep the `-A 6` —
+database errors span several lines):
 
 ```bash
-docker compose logs coraldash | grep -i "sync failed"
+docker compose logs coraldash | grep -A 6 -i "sync failed"
 ```
 
 ### Unraid
