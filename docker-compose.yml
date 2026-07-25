@@ -163,6 +163,10 @@ services:
     environment:
       SELF_HOSTED: "true"
       LICENSE_KEY: ${LICENSE_KEY}
+      # Used to derive the token-encryption key (Google/Trading 212 tokens at
+      # rest). Set ENCRYPTION_KEY explicitly to rotate independently.
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
       # Browser-facing Supabase URL (must be reachable from user's browser via reverse proxy)
       NEXT_PUBLIC_SUPABASE_URL: ${SITE_URL}
